@@ -21,7 +21,7 @@ fn seed_from_time() -> u32 {
         .unwrap_or(42)
 }
 
-#[macroquad::main("Rusteria")]
+#[macroquad::main("Rustaria")]
 async fn main() {
     let seed = seed_from_time();
     println!("world seed: {seed}");

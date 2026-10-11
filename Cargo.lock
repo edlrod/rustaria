@@ -318,7 +318,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rusteria"
+name = "rustaria"
 version = "0.1.0"
 dependencies = [
  "hecs",

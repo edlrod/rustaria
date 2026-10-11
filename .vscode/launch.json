@@ -5,7 +5,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug game",
-            "program": "${workspaceFolder}/target/debug/rusteria",
+            "program": "${workspaceFolder}/target/debug/rustaria",
             "args": [],
             "cwd": "${workspaceFolder}",
             "env": {
