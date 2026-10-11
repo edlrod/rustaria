@@ -5,16 +5,37 @@ const GRAVITY: f32 = 40.0; // tiles per second squared
 const MAX_FALL: f32 = 40.0; // terminal velocity, tiles per second
 const EDGE_EPS: f32 = 1e-4;
 
+// Largest simulated time step.
+const MAX_DT: f32 = 0.1;
+
+// Largest distance an entity may move between collision checks.
+const MAX_STEP: f32 = 0.5;
+
 pub fn physics(entities: &mut hecs::World, tiles: &mut World, dt: f32) {
+    let dt = dt.min(MAX_DT);
+
     for (transform, velocity) in entities.query_mut::<(&mut Transform, &mut Velocity)>() {
-        velocity.y = (velocity.y + GRAVITY * dt).min(MAX_FALL);
+        // Split movement into sub-steps so a fast fall can't skip over tiles.
+        let steps = substeps(velocity, dt);
+        let step_dt = dt / steps as f32;
 
-        transform.x += velocity.x * dt;
-        resolve_x(transform, velocity, tiles);
+        for _ in 0..steps {
+            velocity.y = (velocity.y + GRAVITY * step_dt).min(MAX_FALL);
 
-        transform.y += velocity.y * dt;
-        resolve_y(transform, velocity, tiles);
+            transform.x += velocity.x * step_dt;
+            resolve_x(transform, velocity, tiles);
+
+            transform.y += velocity.y * step_dt;
+            resolve_y(transform, velocity, tiles);
+        }
     }
+}
+
+// Number of sub-steps needed to keep movement below `MAX_STEP` per check.
+fn substeps(velocity: &Velocity, dt: f32) -> i32 {
+    // Gravity can reach MAX_FALL within the frame, so treat it as the ceiling.
+    let speed = velocity.x.abs().max(velocity.y.abs()).max(MAX_FALL);
+    (speed * dt / MAX_STEP).ceil().max(1.0) as i32
 }
 
 fn resolve_x(transform: &mut Transform, velocity: &mut Velocity, tiles: &mut World) {
