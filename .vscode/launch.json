@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug game",
+            "program": "${workspaceFolder}/target/debug/rusteria",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_BACKTRACE": "1"
+            },
+            "preLaunchTask": "cargo build"
+        }
+    ]
+}
