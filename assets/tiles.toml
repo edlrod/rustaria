@@ -1,0 +1,56 @@
+# Tile definitions.
+#
+# The order of `[[tile]]` entries defines the tile ids stored in chunks, so
+# append new tiles at the end rather than reordering existing ones.
+#
+# Each tile supports:
+#   name  - unique identifier. World generation looks tiles up by these names,
+#           so the well-known ones (air, grass, dirt, stone, wood, leaves,
+#           dirt_wall, stone_wall, coal_ore, iron_ore) must be present.
+#   color - optional "#rrggbb" render color. Omit it for invisible tiles
+#           such as air. Defaults to invisible.
+#   solid - whether the tile blocks entity movement. Defaults to false.
+
+[[tile]]
+name = "air"
+
+[[tile]]
+name = "grass"
+color = "#4ca64c"
+solid = true
+
+[[tile]]
+name = "dirt"
+color = "#96613f"
+solid = true
+
+[[tile]]
+name = "stone"
+color = "#7d8087"
+solid = true
+
+[[tile]]
+name = "wood"
+color = "#8a5a36"
+
+[[tile]]
+name = "leaves"
+color = "#2f7a3d"
+
+[[tile]]
+name = "dirt_wall"
+color = "#4d3b2a"
+
+[[tile]]
+name = "stone_wall"
+color = "#39404c"
+
+[[tile]]
+name = "coal_ore"
+color = "#4a4e57"
+solid = true
+
+[[tile]]
+name = "iron_ore"
+color = "#a87a58"
+solid = true

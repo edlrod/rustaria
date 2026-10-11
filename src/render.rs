@@ -1,29 +1,22 @@
 use crate::camera::Camera;
 use crate::ecs::components::{ColorRenderer, Transform};
-use crate::world::{CHUNK_SIZE, Tile, World};
+use crate::world::{CHUNK_SIZE, World};
 use macroquad::prelude::*;
 
-fn tile_color(tile: Tile) -> Option<Color> {
-    let hex = match tile {
-        Tile::Air => return None,
-        Tile::Grass => 0x4ca64c,
-        Tile::Dirt => 0x96613f,
-        Tile::Stone => 0x7d8087,
-        Tile::Wood => 0x8a5a36,
-        Tile::Leaves => 0x2f7a3d,
-        Tile::DirtWall => 0x4d3b2a,
-        Tile::StoneWall => 0x39404c,
-        Tile::CoalOre => 0x4a4e57,
-        Tile::IronOre => 0xa87a58,
-    };
-    Some(Color::from_hex(hex))
-}
-
 pub fn draw_world(world: &mut World, camera: &Camera) {
+    // Copy the palette out first so the immutable tile-set borrow doesn't
+    // conflict with the mutable chunk access below.
+    let palette: Vec<Option<Color>> = world
+        .tiles()
+        .infos()
+        .iter()
+        .map(|info| info.color.map(to_color))
+        .collect();
+
     for (cx, cy) in camera.visible_chunks() {
         let chunk = world.get_chunk(cx, cy);
         for (i, tile) in chunk.tiles().iter().enumerate() {
-            let Some(color) = tile_color(*tile) else {
+            let Some(color) = palette.get(*tile as usize).copied().flatten() else {
                 continue;
             };
             let x = cx * CHUNK_SIZE + ((i as i32) % CHUNK_SIZE);
@@ -31,6 +24,15 @@ pub fn draw_world(world: &mut World, camera: &Camera) {
             draw_rectangle(x as f32, y as f32, 1.0, 1.0, color);
         }
     }
+}
+
+fn to_color(rgb: [u8; 3]) -> Color {
+    Color::new(
+        rgb[0] as f32 / 255.0,
+        rgb[1] as f32 / 255.0,
+        rgb[2] as f32 / 255.0,
+        1.0,
+    )
 }
 
 pub fn draw_entities(entities: &mut hecs::World) {

@@ -27,7 +27,8 @@ fn seed_from_time() -> u32 {
 async fn main() {
     let seed = seed_from_time();
     println!("world seed: {seed}");
-    let mut tiles = World::new(seed);
+    let tile_set = tile::load(tile::DEFAULT_PATH).expect("failed to load tile config");
+    let mut tiles = World::new(seed, tile_set);
 
     let mut entities = hecs::World::new();
     let player: hecs::Entity = entities.spawn((

@@ -1,4 +1,5 @@
 use crate::position::TilePosition;
+use crate::tile::{Tile, TileSet};
 use noise::{Fbm, NoiseFn, Perlin};
 use std::collections::HashMap;
 
@@ -19,29 +20,6 @@ const TREE_CHANCE: f64 = 0.16;
 // Iron only spawns this far below the surface, in tiles.
 const IRON_DEPTH: i32 = 60;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum Tile {
-    Air,
-    Grass,
-    Dirt,
-    Stone,
-    Wood,
-    Leaves,
-    DirtWall,
-    StoneWall,
-    CoalOre,
-    IronOre,
-}
-
-impl Tile {
-    pub fn is_solid(self) -> bool {
-        matches!(
-            self,
-            Tile::Grass | Tile::Dirt | Tile::Stone | Tile::CoalOre | Tile::IronOre
-        )
-    }
-}
-
 pub struct Chunk {
     tiles: Box<[Tile; CHUNK_AREA]>,
 }
@@ -55,6 +33,7 @@ impl Chunk {
 pub struct World {
     seed: u32,
     chunks: HashMap<TilePosition, Chunk>,
+    tiles: TileSet,
 
     // Noise fields, each seeded independently so they don't correlate.
     hills: Fbm<Perlin>,     // broad surface elevation
@@ -66,7 +45,7 @@ pub struct World {
 }
 
 impl World {
-    pub fn new(seed: u32) -> Self {
+    pub fn new(seed: u32, tiles: TileSet) -> Self {
         let fbm = |salt: u32, octaves: usize| {
             let seed = seed.wrapping_add(salt.wrapping_mul(7919));
             let mut noise = Fbm::<Perlin>::new(seed);
@@ -77,6 +56,7 @@ impl World {
         Self {
             seed,
             chunks: HashMap::new(),
+            tiles,
             hills: fbm(1, 4),
             bumps: fbm(2, 4),
             tunnels: fbm(3, 4),
@@ -84,6 +64,11 @@ impl World {
             caverns: fbm(5, 3),
             ores: fbm(6, 3),
         }
+    }
+
+    // The tile definitions this world was created with.
+    pub fn tiles(&self) -> &TileSet {
+        &self.tiles
     }
 
     pub fn surface_height(&self, x: i32) -> i32 {
@@ -283,7 +268,8 @@ impl World {
 
         for ty in y0..=y1 {
             for tx in x0..=x1 {
-                if self.get_tile((tx, ty)).is_solid() {
+                let tile = self.get_tile((tx, ty));
+                if self.tiles.is_solid(tile) {
                     return true;
                 }
             }
