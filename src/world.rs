@@ -33,6 +33,15 @@ pub enum Tile {
     IronOre,
 }
 
+impl Tile {
+    pub fn is_solid(self) -> bool {
+        matches!(
+            self,
+            Tile::Grass | Tile::Dirt | Tile::Stone | Tile::CoalOre | Tile::IronOre
+        )
+    }
+}
+
 pub struct Chunk {
     tiles: Box<[Tile; CHUNK_AREA]>,
 }
@@ -105,13 +114,13 @@ impl World {
     //     self.chunks.get_mut(&(cx, cy)).unwrap()
     // }
 
-    // pub fn get_tile(&mut self, pos: TilePosition) -> Tile {
-    //     let (x, y) = pos;
-    //     let (cx, cy) = (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE));
-    //     let chunk = self.get_chunk(cx, cy);
-    //     let (lx, ly) = (x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
-    //     chunk.tiles()[(ly * CHUNK_SIZE + lx) as usize]
-    // }
+    pub fn get_tile(&mut self, pos: TilePosition) -> Tile {
+        let (x, y) = pos;
+        let (cx, cy) = (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE));
+        let chunk = self.get_chunk(cx, cy);
+        let (lx, ly) = (x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
+        chunk.tiles()[(ly * CHUNK_SIZE + lx) as usize]
+    }
 
     // pub fn set_tile(&mut self, pos: TilePosition, tile: Tile) {
     //     let (x, y) = pos;
@@ -263,5 +272,22 @@ impl World {
         h = h.wrapping_mul(0xC2B2_AE35);
         h ^= h >> 16;
         (h >> 8) as f64 / 16_777_216.0
+    }
+
+    pub fn overlaps_solid(&mut self, x: f32, y: f32, w: f32, h: f32) -> bool {
+        const EPS: f32 = 1e-4;
+        let x0 = x.floor() as i32;
+        let x1 = (x + w - EPS).floor() as i32;
+        let y0 = y.floor() as i32;
+        let y1 = (y + h - EPS).floor() as i32;
+
+        for ty in y0..=y1 {
+            for tx in x0..=x1 {
+                if self.get_tile((tx, ty)).is_solid() {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
