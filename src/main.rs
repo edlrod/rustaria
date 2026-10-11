@@ -2,6 +2,8 @@ mod camera;
 mod ecs;
 mod position;
 mod render;
+mod tile;
+mod time;
 mod world;
 
 use camera::Camera;
@@ -44,7 +46,7 @@ async fn main() {
 
     loop {
         // Update
-        let dt = get_frame_time();
+        let dt = time::frame_delta();
         systems::player_controller::player_controller(&mut entities, &mut tiles);
         systems::physics::physics(&mut entities, &mut tiles, dt);
 
@@ -54,7 +56,7 @@ async fn main() {
 
         // Draw
         clear_background(SKYBLUE);
-        camera.set();
+        camera.set(dt);
 
         render::draw_world(&mut tiles, &camera);
         render::draw_entities(&mut entities);

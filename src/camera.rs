@@ -21,7 +21,7 @@ impl Camera {
         self.target = Some(target);
     }
 
-    pub fn set(&mut self) {
+    pub fn set(&mut self, dt: f32) {
         set_camera(&Camera2D {
             target: self.position,
             offset: Vec2::ZERO,
@@ -33,7 +33,6 @@ impl Camera {
         });
 
         if let Some(target) = self.target {
-            let dt = get_frame_time();
             let follow_speed = 6.0;
             let t = 1.0 - (-follow_speed * dt).exp();
             self.position.x += (target.0 - self.position.x) * t;

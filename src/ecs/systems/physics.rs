@@ -5,15 +5,10 @@ const GRAVITY: f32 = 40.0; // tiles per second squared
 const MAX_FALL: f32 = 40.0; // terminal velocity, tiles per second
 const EDGE_EPS: f32 = 1e-4;
 
-// Largest simulated time step.
-const MAX_DT: f32 = 0.1;
-
 // Largest distance an entity may move between collision checks.
 const MAX_STEP: f32 = 0.5;
 
 pub fn physics(entities: &mut hecs::World, tiles: &mut World, dt: f32) {
-    let dt = dt.min(MAX_DT);
-
     for (transform, velocity) in entities.query_mut::<(&mut Transform, &mut Velocity)>() {
         // Split movement into sub-steps so a fast fall can't skip over tiles.
         let steps = substeps(velocity, dt);
