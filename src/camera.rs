@@ -1,4 +1,5 @@
 use crate::position::{Position, TilePosition};
+use crate::world::CHUNK_SIZE;
 use macroquad::prelude::*;
 
 pub struct Camera {
@@ -40,18 +41,32 @@ impl Camera {
         }
     }
 
-    pub fn visible_tiles(&self) -> impl Iterator<Item = TilePosition> {
+    // All chunk coordinates that contain at least one visible tile.
+    pub fn visible_chunks(&self) -> impl Iterator<Item = TilePosition> {
+        let (start_x, start_y, end_x, end_y) = self.visible_bounds();
+
+        let start_cx = start_x.div_euclid(CHUNK_SIZE);
+        let end_cx = (end_x - 1).div_euclid(CHUNK_SIZE);
+        let start_cy = start_y.div_euclid(CHUNK_SIZE);
+        let end_cy = (end_y - 1).div_euclid(CHUNK_SIZE);
+
+        (start_cy..=end_cy).flat_map(move |cy| (start_cx..=end_cx).map(move |cx| (cx, cy)))
+    }
+
+    // Visible tile bounds as `(start_x, start_y, end_x, end_y)`, ends
+    // exclusive, padded by one tile in each direction.
+    fn visible_bounds(&self) -> (i32, i32, i32, i32) {
         let half_width_tiles = (screen_width() / self.ppu / 2.0).ceil() as i32;
         let half_height_tiles = (screen_height() / self.ppu / 2.0).ceil() as i32;
 
         let center_x = self.position.x as i32;
         let center_y = self.position.y as i32;
 
-        let start_x = center_x - half_width_tiles - 1;
-        let end_x = center_x + half_width_tiles + 1;
-        let start_y = center_y - half_height_tiles - 1;
-        let end_y = center_y + half_height_tiles + 1;
-
-        (start_y..end_y).flat_map(move |y| (start_x..end_x).map(move |x| (x, y)))
+        (
+            center_x - half_width_tiles - 1,
+            center_y - half_height_tiles - 1,
+            center_x + half_width_tiles + 1,
+            center_y + half_height_tiles + 1,
+        )
     }
 }
