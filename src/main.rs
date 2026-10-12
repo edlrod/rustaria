@@ -12,7 +12,7 @@ use macroquad::prelude::*;
 use world::World;
 
 use crate::ecs::{
-    components::{ColorRenderer, Player, Velocity},
+    components::{ColorRenderer, Cursor, Player, Velocity},
     systems,
 };
 
@@ -43,12 +43,24 @@ async fn main() {
         Player,
     ));
 
+    entities.spawn((
+        Transform {
+            x: 0.0,
+            y: 0.0,
+            width: 1.0,
+            height: 1.0,
+        },
+        ColorRenderer { color: WHITE },
+        Cursor,
+    ));
+
     let mut camera = Camera::new(16.0);
 
     loop {
         // Update
         let dt = time::frame_delta();
         systems::player_controller::player_controller(&mut entities, &mut tiles);
+        systems::cursor_controller::cursor_controller(&mut entities, &mut tiles, &camera);
         systems::physics::physics(&mut entities, &mut tiles, dt);
 
         if let Ok(transform) = entities.get::<&Transform>(player) {

@@ -91,13 +91,13 @@ impl World {
         self.chunks.get(&(cx, cy)).unwrap()
     }
 
-    // fn get_chunk_mut(&mut self, cx: i32, cy: i32) -> &mut Chunk {
-    //     if !self.chunks.contains_key(&(cx, cy)) {
-    //         let chunk = self.generate_chunk(cx, cy);
-    //         self.chunks.insert((cx, cy), chunk);
-    //     }
-    //     self.chunks.get_mut(&(cx, cy)).unwrap()
-    // }
+    fn get_chunk_mut(&mut self, cx: i32, cy: i32) -> &mut Chunk {
+        if !self.chunks.contains_key(&(cx, cy)) {
+            let chunk = self.generate_chunk(cx, cy);
+            self.chunks.insert((cx, cy), chunk);
+        }
+        self.chunks.get_mut(&(cx, cy)).unwrap()
+    }
 
     pub fn get_tile(&mut self, pos: TilePosition) -> Tile {
         let (x, y) = pos;
@@ -107,13 +107,13 @@ impl World {
         chunk.tiles()[(ly * CHUNK_SIZE + lx) as usize]
     }
 
-    // pub fn set_tile(&mut self, pos: TilePosition, tile: Tile) {
-    //     let (x, y) = pos;
-    //     let (cx, cy) = (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE));
-    //     let chunk = self.get_chunk_mut(cx, cy);
-    //     let (lx, ly) = (x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
-    //     chunk.tiles[(ly * CHUNK_SIZE + lx) as usize] = tile;
-    // }
+    pub fn set_tile(&mut self, pos: TilePosition, tile: Tile) {
+        let (x, y) = pos;
+        let (cx, cy) = (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE));
+        let chunk = self.get_chunk_mut(cx, cy);
+        let (lx, ly) = (x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
+        chunk.tiles[(ly * CHUNK_SIZE + lx) as usize] = tile;
+    }
 
     fn generate_chunk(&self, cx: i32, cy: i32) -> Chunk {
         let x0 = cx * CHUNK_SIZE;

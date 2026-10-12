@@ -15,3 +15,4 @@ pub struct ColorRenderer {
 }
 
 pub struct Player;
+pub struct Cursor;
