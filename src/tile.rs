@@ -11,14 +11,14 @@ pub struct TileInfo {
     pub blocks_sky: bool,
 }
 
-// Tile properties loaded from the config file, indexed by [`Tile`].
+/// Tile properties loaded from the config file, indexed by [`Tile`].
 #[derive(Clone, Debug)]
 pub struct TileRegistry {
     infos: Vec<TileInfo>,
 }
 
 impl TileRegistry {
-    // Parse tile properties from TOML source.
+    /// Parse tile properties from TOML source.
     pub fn from_toml(source: &str) -> Result<Self, String> {
         let file: TileConfigFile = toml::from_str(source).map_err(|e| e.to_string())?;
 
@@ -59,17 +59,17 @@ impl TileRegistry {
         Ok(Self { infos })
     }
 
-    // Properties of a tile.
+    /// Properties of a tile.
     pub fn info(&self, tile: Tile) -> &TileInfo {
         &self.infos[tile as usize]
     }
 
-    // All tile definitions, in id order.
+    /// All tile definitions, in id order.
     pub fn infos(&self) -> &[TileInfo] {
         &self.infos
     }
 
-    // Whether a tile blocks entity movement.
+    /// Whether a tile blocks entity movement.
     pub fn is_solid(&self, tile: Tile) -> bool {
         self.info(tile).solid
     }
@@ -107,7 +107,7 @@ struct TileDef {
     blocks_sky: bool,
 }
 
-// Parse a `"#rrggbb"` (or `"rrggbb"`) color into RGB bytes.
+/// Parse a `"#rrggbb"` (or `"rrggbb"`) color into RGB bytes.
 fn parse_color(hex: &str) -> Result<[u8; 3], String> {
     let digits = hex.strip_prefix('#').unwrap_or(hex);
     if digits.len() != 6 || !digits.bytes().all(|b| b.is_ascii_hexdigit()) {

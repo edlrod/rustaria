@@ -1,16 +1,16 @@
 use crate::tile::{Tile, TileRegistry};
 use std::collections::VecDeque;
 
-// Fraction of light that survives one tile of air.
+/// Fraction of light that survives one tile of air.
 pub const AIR_DECAY: f32 = 0.91;
 
-// Fraction that survives one tile of solid ground.
+/// Fraction that survives one tile of solid ground.
 pub const SOLID_DECAY: f32 = 0.66;
 
-// Light dimmer than this is considered dead and never propagates.
+/// Light dimmer than this is considered dead and never propagates.
 pub const LIGHT_EPSILON: f32 = 0.05;
 
-// Compute light for a rectangle of tiles ("window").
+/// Compute light for a rectangle of tiles ("window").
 pub fn compute_light(
     tiles: &[Tile],
     column_open: &[bool],

@@ -5,7 +5,7 @@ const GRAVITY: f32 = 40.0; // tiles per second squared
 const MAX_FALL: f32 = 40.0; // terminal velocity, tiles per second
 const EDGE_EPS: f32 = 1e-4;
 
-// Largest distance an entity may move between collision checks.
+/// Largest distance an entity may move between collision checks.
 const MAX_STEP: f32 = 0.5;
 
 pub fn physics(entities: &mut hecs::World, terrain: &mut Terrain, dt: f32) {
@@ -26,7 +26,7 @@ pub fn physics(entities: &mut hecs::World, terrain: &mut Terrain, dt: f32) {
     }
 }
 
-// Number of sub-steps needed to keep movement below `MAX_STEP` per check.
+/// Number of sub-steps needed to keep movement below `MAX_STEP` per check.
 fn substeps(velocity: &Velocity, dt: f32) -> i32 {
     // Gravity can reach MAX_FALL within the frame, so treat it as the ceiling.
     let speed = velocity.x.abs().max(velocity.y.abs()).max(MAX_FALL);

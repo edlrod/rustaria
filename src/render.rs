@@ -3,10 +3,10 @@ use crate::ecs::components::{ColorRenderer, Cursor, Transform};
 use crate::terrain::{CHUNK_SIZE, Terrain};
 use macroquad::prelude::*;
 
-// Brightness curve. Multiplicative decay already produces a natural falloff.
+/// Brightness curve. Multiplicative decay already produces a natural falloff.
 const LIGHT_GAMMA: f32 = 1.0;
 
-// Nothing renders darker than this.
+/// Nothing renders darker than this.
 const AMBIENT: f32 = 0.12;
 
 pub fn draw_terrain(terrain: &mut Terrain, camera: &Camera) {
@@ -41,7 +41,7 @@ pub fn draw_terrain(terrain: &mut Terrain, camera: &Camera) {
     }
 }
 
-// One light interpretation for tiles and entities.
+/// One light interpretation for tiles and entities.
 fn brightness(level: f32) -> f32 {
     level.max(AMBIENT).powf(LIGHT_GAMMA)
 }

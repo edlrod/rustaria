@@ -40,7 +40,7 @@ impl Camera {
         }
     }
 
-    // All chunk coordinates that contain at least one visible tile.
+    /// All chunk coordinates that contain at least one visible tile.
     pub fn visible_chunks(&self) -> impl Iterator<Item = ChunkPosition> {
         let (start_x, start_y, end_x, end_y) = self.visible_bounds();
 
@@ -52,8 +52,8 @@ impl Camera {
         (start_cy..=end_cy).flat_map(move |cy| (start_cx..=end_cx).map(move |cx| (cx, cy)))
     }
 
-    // Visible tile bounds as `(start_x, start_y, end_x, end_y)`, ends
-    // exclusive, padded by one tile in each direction.
+    /// Visible tile bounds as `(start_x, start_y, end_x, end_y)`, ends
+    /// exclusive, padded by one tile in each direction.
     fn visible_bounds(&self) -> (i32, i32, i32, i32) {
         let half_width_tiles = (screen_width() / self.ppu / 2.0).ceil() as i32;
         let half_height_tiles = (screen_height() / self.ppu / 2.0).ceil() as i32;

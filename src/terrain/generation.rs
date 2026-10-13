@@ -2,24 +2,24 @@ use super::{CHUNK_AREA, CHUNK_SIZE, Chunk};
 use crate::tile::Tile;
 use noise::{Fbm, NoiseFn, Perlin};
 
-// How many tiles outside a chunk we scan for trees that overlap into it.
-// Must cover the canopy radius.
+/// How many tiles outside a chunk we scan for trees that overlap into it.
+/// Must cover the canopy radius.
 const TREE_MARGIN: i32 = 3;
 
-// Minimum distance between two trees, in tiles.
+/// Minimum distance between two trees, in tiles.
 const TREE_SPACING: i32 = 3;
 
-// Chance for a column to want a tree (before spacing is applied).
+/// Chance for a column to want a tree (before spacing is applied).
 const TREE_CHANCE: f64 = 0.16;
 
-// Iron only spawns this far below the surface, in tiles.
+/// Iron only spawns this far below the surface, in tiles.
 const IRON_DEPTH: i32 = 60;
 
-// Procedural terrain shape: the noise fields and the rules that turn them into tiles.
+/// Procedural terrain shape: the noise fields and the rules that turn them into tiles.
 pub(super) struct TerrainGen {
     seed: u32,
 
-    // Noise fields, each seeded independently so they don't correlate.
+    /// Noise fields, each seeded independently so they don't correlate.
     hills: Fbm<Perlin>,     // broad surface elevation
     bumps: Fbm<Perlin>,     // small surface detail + dirt depth
     tunnels: Fbm<Perlin>,   // winding cave tunnels (zero-contour bands)
@@ -48,7 +48,7 @@ impl TerrainGen {
         }
     }
 
-    // Height of the first solid tile in column `x`.
+    /// Height of the first solid tile in column `x`.
     pub fn surface_height(&self, x: i32) -> i32 {
         let fx = x as f64;
         let hills = self.hills.get([fx * 0.003, 0.0]) * 55.0;
@@ -93,7 +93,7 @@ impl TerrainGen {
         (11.0 + t * 5.0).round() as i32
     }
 
-    // Terrain for a single tile without tree overlap.
+    /// Terrain for a single tile without tree overlap.
     fn terrain_tile(&self, x: i32, y: i32, surface: i32, dirt_bottom: i32) -> Tile {
         if y < surface {
             return Tile::Air;
@@ -153,18 +153,18 @@ impl TerrainGen {
         }
     }
 
-    // Does the tree rooted in column `x` exist?
+    /// Does the tree rooted in column `x` exist?
     fn has_tree(&self, x: i32) -> bool {
         self.hash01(x, 0x51ED) < TREE_CHANCE
             && (1..=TREE_SPACING).all(|d| self.hash01(x - d, 0x51ED) >= TREE_CHANCE)
     }
 
-    // Trunk height of the tree in column `x`, in tiles.
+    /// Trunk height of the tree in column `x`, in tiles.
     fn tree_height(&self, x: i32) -> i32 {
         4 + (self.hash01(x, 0xA11CE) * 7.0) as i32
     }
 
-    // Writes the tiles of the tree rooted in column `root_x` into `tiles`.
+    /// Writes the tiles of the tree rooted in column `root_x` into `tiles`.
     fn stamp_tree(&self, tiles: &mut [Tile], x0: i32, y0: i32, root_x: i32) {
         let surface = self.surface_height(root_x);
         let top = surface - self.tree_height(root_x);
@@ -197,7 +197,7 @@ impl TerrainGen {
         }
     }
 
-    // Cheap deterministic per-integer hash in `[0, 1)`.
+    /// Cheap deterministic per-integer hash in `[0, 1)`.
     fn hash01(&self, x: i32, salt: u32) -> f64 {
         let mut h = (x as u32).wrapping_mul(0x9E37_79B1) ^ salt ^ self.seed;
         h ^= h >> 15;

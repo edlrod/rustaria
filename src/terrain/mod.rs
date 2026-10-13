@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use generation::TerrainGen;
 use lighting::Lighting;
 
-// Side length of a chunk, in tiles.
+/// Side length of a chunk, in tiles.
 pub const CHUNK_SIZE: i32 = 32;
 pub(crate) const CHUNK_AREA: usize = (CHUNK_SIZE * CHUNK_SIZE) as usize;
 
@@ -16,7 +16,7 @@ pub struct Chunk {
     tiles: Box<[Tile; CHUNK_AREA]>,
     sky: Box<[f32; CHUNK_AREA]>,
     block: Box<[f32; CHUNK_AREA]>,
-    // Set when tiles changed and the light arrays are stale.
+    /// Set when tiles changed and the light arrays are stale.
     light_dirty: bool,
 }
 
@@ -54,7 +54,7 @@ impl Terrain {
         }
     }
 
-    // The tile definitions this terrain was created with.
+    /// The tile definitions this terrain was created with.
     pub fn tile_registry(&self) -> &TileRegistry {
         &self.tile_registry
     }
