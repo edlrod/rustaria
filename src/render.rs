@@ -1,6 +1,6 @@
 use crate::camera::Camera;
 use crate::ecs::components::{ColorRenderer, Cursor, Transform};
-use crate::world::{CHUNK_SIZE, World};
+use crate::terrain::{CHUNK_SIZE, Terrain};
 use macroquad::prelude::*;
 
 // Brightness curve. Multiplicative decay already produces a natural falloff.
@@ -9,16 +9,16 @@ const LIGHT_GAMMA: f32 = 1.0;
 // Nothing renders darker than this.
 const AMBIENT: f32 = 0.12;
 
-pub fn draw_world(world: &mut World, camera: &Camera) {
-    let palette: Vec<Option<Color>> = world
-        .tiles()
+pub fn draw_terrain(terrain: &mut Terrain, camera: &Camera) {
+    let palette: Vec<Option<Color>> = terrain
+        .tile_registry()
         .infos()
         .iter()
         .map(|info| info.color.map(to_color))
         .collect();
 
     for (cx, cy) in camera.visible_chunks() {
-        let chunk = world.get_chunk(cx, cy);
+        let chunk = terrain.get_chunk(cx, cy);
         let sky = chunk.sky();
         let block = chunk.block();
 
@@ -64,13 +64,13 @@ fn to_color(rgb: [u8; 3]) -> Color {
     )
 }
 
-pub fn draw_entities(entities: &mut hecs::World, world: &mut World) {
+pub fn draw_entities(entities: &mut hecs::World, terrain: &mut Terrain) {
     // World objects: tinted by the light at their center.
     for (transform, renderer) in &mut entities
         .query::<(&Transform, &ColorRenderer)>()
         .without::<&Cursor>()
     {
-        let (sky, block) = world.get_light((
+        let (sky, block) = terrain.get_light((
             (transform.x + transform.width * 0.5).floor() as i32,
             (transform.y + transform.height * 0.5).floor() as i32,
         ));

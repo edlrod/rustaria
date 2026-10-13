@@ -1,6 +1,6 @@
 use crate::light;
-use crate::position::TilePosition;
-use crate::tile::{Tile, TileSet};
+use crate::position::{ChunkPosition, TilePosition};
+use crate::tile::{Tile, TileRegistry};
 use noise::{Fbm, NoiseFn, Perlin};
 use std::collections::HashMap;
 
@@ -59,10 +59,10 @@ impl Chunk {
     }
 }
 
-pub struct World {
+pub struct Terrain {
     seed: u32,
-    chunks: HashMap<TilePosition, Chunk>,
-    tiles: TileSet,
+    chunks: HashMap<ChunkPosition, Chunk>,
+    tile_registry: TileRegistry,
 
     // Noise fields, each seeded independently so they don't correlate.
     hills: Fbm<Perlin>,     // broad surface elevation
@@ -76,8 +76,8 @@ pub struct World {
     sky_floors: HashMap<i32, i32>,
 }
 
-impl World {
-    pub fn new(seed: u32, tiles: TileSet) -> Self {
+impl Terrain {
+    pub fn new(seed: u32, tile_registry: TileRegistry) -> Self {
         // Invariant: the window margin must cover light's full reach, or chunk seams appear. Checked, not assumed.
         debug_assert!(
             light::AIR_DECAY.powi(LIGHT_RADIUS) < light::LIGHT_EPSILON,
@@ -94,7 +94,7 @@ impl World {
         Self {
             seed,
             chunks: HashMap::new(),
-            tiles,
+            tile_registry,
             hills: fbm(1, 4),
             bumps: fbm(2, 4),
             tunnels: fbm(3, 4),
@@ -105,9 +105,9 @@ impl World {
         }
     }
 
-    // The tile definitions this world was created with.
-    pub fn tiles(&self) -> &TileSet {
-        &self.tiles
+    // The tile definitions this terrain was created with.
+    pub fn tile_registry(&self) -> &TileRegistry {
+        &self.tile_registry
     }
 
     pub fn surface_height(&self, x: i32) -> i32 {
@@ -333,7 +333,7 @@ impl World {
         let mut y = SKY_CEILING;
         while y < SKY_SCAN_LIMIT {
             let tile = self.get_tile((x, y)); // &mut self ends when this returns
-            let info = self.tiles.info(tile); // fresh shared borrow
+            let info = self.tile_registry.info(tile); // fresh shared borrow
             if info.opaque || info.blocks_sky {
                 break;
             }
@@ -371,7 +371,7 @@ impl World {
         }
 
         let (sky, block) =
-            light::compute_light(&window, &column_open, &self.tiles, WINDOW_SIZE, WINDOW_SIZE);
+            light::compute_light(&window, &column_open, &self.tile_registry, WINDOW_SIZE, WINDOW_SIZE);
 
         // Copy the window's center back into the chunk.
         let chunk = self
@@ -419,7 +419,7 @@ impl World {
         for ty in y0..=y1 {
             for tx in x0..=x1 {
                 let tile = self.get_tile((tx, ty));
-                if self.tiles.is_solid(tile) {
+                if self.tile_registry.is_solid(tile) {
                     return true;
                 }
             }

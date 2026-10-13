@@ -1,5 +1,5 @@
-use crate::position::{Position, TilePosition};
-use crate::world::CHUNK_SIZE;
+use crate::position::{ChunkPosition, Position};
+use crate::terrain::CHUNK_SIZE;
 use macroquad::prelude::*;
 
 pub struct Camera {
@@ -41,7 +41,7 @@ impl Camera {
     }
 
     // All chunk coordinates that contain at least one visible tile.
-    pub fn visible_chunks(&self) -> impl Iterator<Item = TilePosition> {
+    pub fn visible_chunks(&self) -> impl Iterator<Item = ChunkPosition> {
         let (start_x, start_y, end_x, end_y) = self.visible_bounds();
 
         let start_cx = start_x.div_euclid(CHUNK_SIZE);

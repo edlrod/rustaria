@@ -13,11 +13,11 @@ pub struct TileInfo {
 
 // Tile properties loaded from the config file, indexed by [`Tile`].
 #[derive(Clone, Debug)]
-pub struct TileSet {
+pub struct TileRegistry {
     infos: Vec<TileInfo>,
 }
 
-impl TileSet {
+impl TileRegistry {
     // Parse tile properties from TOML source.
     pub fn from_toml(source: &str) -> Result<Self, String> {
         let file: TileConfigFile = toml::from_str(source).map_err(|e| e.to_string())?;
@@ -77,9 +77,9 @@ impl TileSet {
 
 pub const DEFAULT_PATH: &str = "assets/tiles.toml";
 
-pub fn load(path: &str) -> Result<TileSet, String> {
+pub fn load(path: &str) -> Result<TileRegistry, String> {
     match std::fs::read_to_string(path) {
-        Ok(source) => TileSet::from_toml(&source).map_err(|e| format!("{path}: {e}")),
+        Ok(source) => TileRegistry::from_toml(&source).map_err(|e| format!("{path}: {e}")),
         Err(err) => {
             panic!("could not read {path}: {err}")
         }

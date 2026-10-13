@@ -1,4 +1,4 @@
-use crate::tile::{Tile, TileSet};
+use crate::tile::{Tile, TileRegistry};
 use std::collections::VecDeque;
 
 // Fraction of light that survives one tile of air.
@@ -14,7 +14,7 @@ pub const LIGHT_EPSILON: f32 = 0.05;
 pub fn compute_light(
     tiles: &[Tile],
     column_open: &[bool],
-    infos: &TileSet,
+    infos: &TileRegistry,
     w: i32,
     h: i32,
 ) -> (Vec<f32>, Vec<f32>) {

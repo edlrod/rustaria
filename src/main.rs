@@ -3,14 +3,14 @@ mod ecs;
 mod light;
 mod position;
 mod render;
+mod terrain;
 mod tile;
 mod time;
-mod world;
 
 use camera::Camera;
 use ecs::components::Transform;
 use macroquad::prelude::*;
-use world::World;
+use terrain::Terrain;
 
 use crate::ecs::{
     components::{ColorRenderer, Cursor, Player, Velocity},
@@ -28,8 +28,8 @@ fn seed_from_time() -> u32 {
 async fn main() {
     let seed = seed_from_time();
     println!("world seed: {seed}");
-    let tile_set = tile::load(tile::DEFAULT_PATH).expect("failed to load tile config");
-    let mut tiles = World::new(seed, tile_set);
+    let tile_registry = tile::load(tile::DEFAULT_PATH).expect("failed to load tile config");
+    let mut terrain = Terrain::new(seed, tile_registry);
 
     let mut entities = hecs::World::new();
     let player: hecs::Entity = entities.spawn((
@@ -60,9 +60,9 @@ async fn main() {
     loop {
         // Update
         let dt = time::frame_delta();
-        systems::player_controller::player_controller(&mut entities, &mut tiles);
-        systems::cursor_controller::cursor_controller(&mut entities, &mut tiles, &camera);
-        systems::physics::physics(&mut entities, &mut tiles, dt);
+        systems::player_controller::player_controller(&mut entities, &mut terrain);
+        systems::cursor_controller::cursor_controller(&mut entities, &mut terrain, &camera);
+        systems::physics::physics(&mut entities, &mut terrain, dt);
 
         if let Ok(transform) = entities.get::<&Transform>(player) {
             camera.follow((transform.x, transform.y));
@@ -72,8 +72,8 @@ async fn main() {
         clear_background(SKYBLUE);
         camera.set(dt);
 
-        render::draw_world(&mut tiles, &camera);
-        render::draw_entities(&mut entities, &mut tiles);
+        render::draw_terrain(&mut terrain, &camera);
+        render::draw_entities(&mut entities, &mut terrain);
 
         next_frame().await
     }
