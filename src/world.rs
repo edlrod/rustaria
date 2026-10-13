@@ -1,3 +1,4 @@
+use crate::light;
 use crate::position::TilePosition;
 use crate::tile::{Tile, TileSet};
 use noise::{Fbm, NoiseFn, Perlin};
@@ -20,13 +21,35 @@ const TREE_CHANCE: f64 = 0.16;
 // Iron only spawns this far below the surface, in tiles.
 const IRON_DEPTH: i32 = 60;
 
+// How far light travels: the brightest level is 15, propagation costs one level per tile.
+const LIGHT_RADIUS: i32 = light::LIGHT_MAX as i32;
+
+// A chunk plus one light radius on each side. Any source that could light the chunk's interior is inside this window.
+const WINDOW_SIZE: i32 = CHUNK_SIZE + 2 * LIGHT_RADIUS;
+
+// Generation puts nothing above this height (terrain tops out near y = -76), so sky scans start here and only meet air.
+const SKY_CEILING: i32 = -128;
+
+// Safety bound for the sky scan; generation guarantees a sun-blocking tile long before this depth.
+const SKY_SCAN_LIMIT: i32 = 1024;
+
 pub struct Chunk {
     tiles: Box<[Tile; CHUNK_AREA]>,
+    sky: Box<[u8; CHUNK_AREA]>,
+    block: Box<[u8; CHUNK_AREA]>,
+    // Set when tiles changed and the light arrays are stale.
+    light_dirty: bool,
 }
 
 impl Chunk {
     pub fn tiles(&self) -> &[Tile; CHUNK_AREA] {
         &self.tiles
+    }
+    pub fn sky(&self) -> &[u8; CHUNK_AREA] {
+        &self.sky
+    }
+    pub fn block(&self) -> &[u8; CHUNK_AREA] {
+        &self.block
     }
 }
 
@@ -42,6 +65,9 @@ pub struct World {
     tunnels_b: Fbm<Perlin>, // slow regional on/off gate for tunnel systems
     caverns: Fbm<Perlin>,   // large blobby caverns
     ores: Fbm<Perlin>,      // ore veins
+
+    // Per-column sky cache: <x, y> of the first tile that blcoks sunlight
+    sky_floors: HashMap<i32, i32>,
 }
 
 impl World {
@@ -63,6 +89,7 @@ impl World {
             tunnels_b: fbm(4, 4),
             caverns: fbm(5, 3),
             ores: fbm(6, 3),
+            sky_floors: HashMap::new(),
         }
     }
 
@@ -83,10 +110,17 @@ impl World {
         (11.0 + t * 5.0).round() as i32
     }
 
-    pub fn get_chunk(&mut self, cx: i32, cy: i32) -> &Chunk {
+    fn ensure_generated(&mut self, cx: i32, cy: i32) {
         if !self.chunks.contains_key(&(cx, cy)) {
             let chunk = self.generate_chunk(cx, cy);
             self.chunks.insert((cx, cy), chunk);
+        }
+    }
+    pub fn get_chunk(&mut self, cx: i32, cy: i32) -> &Chunk {
+        self.ensure_generated(cx, cy);
+        let dirty = self.chunks.get(&(cx, cy)).unwrap().light_dirty;
+        if dirty {
+            self.relight_chunk(cx, cy);
         }
         self.chunks.get(&(cx, cy)).unwrap()
     }
@@ -102,7 +136,8 @@ impl World {
     pub fn get_tile(&mut self, pos: TilePosition) -> Tile {
         let (x, y) = pos;
         let (cx, cy) = (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE));
-        let chunk = self.get_chunk(cx, cy);
+        self.ensure_generated(cx, cy);
+        let chunk = self.chunks.get(&(cx, cy)).unwrap();
         let (lx, ly) = (x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
         chunk.tiles()[(ly * CHUNK_SIZE + lx) as usize]
     }
@@ -113,6 +148,36 @@ impl World {
         let chunk = self.get_chunk_mut(cx, cy);
         let (lx, ly) = (x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
         chunk.tiles[(ly * CHUNK_SIZE + lx) as usize] = tile;
+
+        // Invalidate this column's sky entry; if the floor moved, light
+        // changes for the whole column below, not just nearby.
+        let old_floor = self.sky_floors.get(&x).copied();
+        self.sky_floors.remove(&x);
+        let floor_moved = match old_floor {
+            Some(old) => self.sky_floor(x) != old, // rescans and re-caches
+            // Never scanned: no chunk's light has ever depended on it.
+            None => false,
+        };
+
+        // Light travels at most LIGHT_RADIUS (15) < CHUNK_SIZE (32), so the
+        // edited chunk and its 8 neighbors are the only chunks whose
+        // sideways light can change.
+        for dcx in -1..=1 {
+            for dcy in -1..=1 {
+                if let Some(chunk) = self.chunks.get_mut(&(cx + dcx, cy + dcy)) {
+                    chunk.light_dirty = true;
+                }
+            }
+        }
+
+        // A new shadow (or new sunlight down a shaft) reaches far below.
+        if floor_moved {
+            for (&(kx, _), chunk) in self.chunks.iter_mut() {
+                if kx == cx {
+                    chunk.light_dirty = true;
+                }
+            }
+        }
     }
 
     fn generate_chunk(&self, cx: i32, cy: i32) -> Chunk {
@@ -141,6 +206,9 @@ impl World {
 
         Chunk {
             tiles: Box::new(tiles),
+            sky: Box::new([0u8; CHUNK_AREA]),
+            block: Box::new([0u8; CHUNK_AREA]),
+            light_dirty: true,
         }
     }
 
@@ -246,6 +314,73 @@ impl World {
                 put(root_x + dx, top - 1 + dy, Tile::Leaves);
             }
         }
+    }
+
+    fn sky_floor(&mut self, x: i32) -> i32 {
+        if let Some(&floor) = self.sky_floors.get(&x) {
+            return floor;
+        }
+        let mut y = SKY_CEILING;
+        while y < SKY_SCAN_LIMIT {
+            let tile = self.get_tile((x, y)); // &mut self ends when this returns
+            let info = self.tiles.info(tile); // fresh shared borrow
+            if info.opaque || info.blocks_sky {
+                break;
+            }
+            y += 1;
+        }
+        let floor = if y >= SKY_SCAN_LIMIT { i32::MAX } else { y };
+        self.sky_floors.insert(x, floor);
+        floor
+    }
+
+    fn relight_chunk(&mut self, cx: i32, cy: i32) {
+        let x0 = cx * CHUNK_SIZE - LIGHT_RADIUS;
+        let y0 = cy * CHUNK_SIZE - LIGHT_RADIUS;
+
+        // Snapshot the window into OWNED buffers: compute_light gets
+        // plain data, so no borrow of self is held across the BFS.
+        let mut window = vec![Tile::Air; (WINDOW_SIZE * WINDOW_SIZE) as usize];
+        let mut i = 0;
+        for y in y0..y0 + WINDOW_SIZE {
+            for x in x0..x0 + WINDOW_SIZE {
+                window[i] = self.get_tile((x, y));
+                i += 1;
+            }
+        }
+
+        // Does each window column start in open sky?
+        let mut column_open = vec![false; WINDOW_SIZE as usize];
+        for lx in 0..WINDOW_SIZE {
+            column_open[lx as usize] = self.sky_floor(x0 + lx) > y0;
+        }
+
+        let (sky, block) =
+            light::compute_light(&window, &column_open, &self.tiles, WINDOW_SIZE, WINDOW_SIZE);
+
+        // Copy the window's center back into the chunk.
+        let chunk = self
+            .chunks
+            .get_mut(&(cx, cy))
+            .expect("relight only runs on generated chunks");
+        for ly in 0..CHUNK_SIZE {
+            for lx in 0..CHUNK_SIZE {
+                let from = ((ly + LIGHT_RADIUS) * WINDOW_SIZE + lx + LIGHT_RADIUS) as usize;
+                let to = (ly * CHUNK_SIZE + lx) as usize;
+                chunk.sky[to] = sky[from];
+                chunk.block[to] = block[from];
+            }
+        }
+        chunk.light_dirty = false;
+    }
+
+    pub fn get_light(&mut self, pos: TilePosition) -> (u8, u8) {
+        let (x, y) = pos;
+        let (cx, cy) = (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE));
+        let chunk = self.get_chunk(cx, cy);
+        let (lx, ly) = (x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
+        let i = (ly * CHUNK_SIZE + lx) as usize;
+        (chunk.sky()[i], chunk.block()[i])
     }
 
     // Cheap deterministic per-integer hash in `[0, 1)`.

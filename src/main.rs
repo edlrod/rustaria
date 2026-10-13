@@ -1,5 +1,6 @@
 mod camera;
 mod ecs;
+mod light;
 mod position;
 mod render;
 mod tile;
@@ -65,6 +66,9 @@ async fn main() {
 
         if let Ok(transform) = entities.get::<&Transform>(player) {
             camera.follow((transform.x, transform.y));
+
+            let light = tiles.get_light((transform.x as i32, transform.y as i32));
+            println!("sky={} block={}", light.0, light.1);
         }
 
         // Draw

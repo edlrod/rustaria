@@ -6,6 +6,9 @@ include!(concat!(env!("OUT_DIR"), "/tiles.rs"));
 pub struct TileInfo {
     pub color: Option<[u8; 3]>,
     pub solid: bool,
+    pub light: u8,
+    pub opaque: bool,
+    pub blocks_sky: bool,
 }
 
 // Tile properties loaded from the config file, indexed by [`Tile`].
@@ -39,6 +42,9 @@ impl TileSet {
             *slot = Some(TileInfo {
                 color,
                 solid: def.solid,
+                light: def.light,
+                opaque: def.opaque,
+                blocks_sky: def.blocks_sky,
             });
         }
 
@@ -93,6 +99,12 @@ struct TileDef {
     color: Option<String>,
     #[serde(default)]
     solid: bool,
+    #[serde(default)]
+    light: u8,
+    #[serde(default)]
+    opaque: bool,
+    #[serde(default)]
+    blocks_sky: bool,
 }
 
 // Parse a `"#rrggbb"` (or `"rrggbb"`) color into RGB bytes.
