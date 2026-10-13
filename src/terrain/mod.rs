@@ -32,6 +32,16 @@ impl Chunk {
     }
 }
 
+/// Decompose a tile coordinate into its chunk coordinate plus the local
+/// coordinate inside that chunk. `div_euclid` keeps this correct across the
+/// negative-coordinate chunk boundary.
+fn chunk_and_local(pos: TilePosition) -> (ChunkPosition, TilePosition) {
+    let (x, y) = pos;
+    let (cx, cy) = (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE));
+    let local = (x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
+    ((cx, cy), local)
+}
+
 /// The tile world: chunk storage plus the tile-edit and collision API.
 ///
 /// Terrain *shape* comes from [`generation::TerrainGen`], light values from
@@ -81,24 +91,20 @@ impl Terrain {
     }
 
     pub fn get_tile(&mut self, pos: TilePosition) -> Tile {
-        let (x, y) = pos;
-        let (cx, cy) = (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE));
+        let ((cx, cy), (lx, ly)) = chunk_and_local(pos);
         self.ensure_generated(cx, cy);
         let chunk = self.chunks.get(&(cx, cy)).unwrap();
-        let (lx, ly) = (x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
         chunk.tiles()[(ly * CHUNK_SIZE + lx) as usize]
     }
 
     pub fn set_tile(&mut self, pos: TilePosition, tile: Tile) {
-        let (x, y) = pos;
-        let (cx, cy) = (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE));
+        let ((cx, cy), (lx, ly)) = chunk_and_local(pos);
         let chunk = self.get_chunk_mut(cx, cy);
-        let (lx, ly) = (x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
         chunk.tiles[(ly * CHUNK_SIZE + lx) as usize] = tile;
 
         // Invalidate this column's sky entry; if the floor moved, light
         // changes for the whole column below, not just nearby.
-        let floor_moved = self.invalidate_sky_column(x);
+        let floor_moved = self.invalidate_sky_column(pos.0);
 
         // Light travels at most LIGHT_RADIUS (32) <= CHUNK_SIZE (32).
         for dcx in -1..=1 {
@@ -120,10 +126,8 @@ impl Terrain {
     }
 
     pub fn get_light(&mut self, pos: TilePosition) -> (f32, f32) {
-        let (x, y) = pos;
-        let (cx, cy) = (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE));
+        let ((cx, cy), (lx, ly)) = chunk_and_local(pos);
         let chunk = self.get_chunk(cx, cy);
-        let (lx, ly) = (x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
         let i = (ly * CHUNK_SIZE + lx) as usize;
         (chunk.sky()[i], chunk.block()[i])
     }

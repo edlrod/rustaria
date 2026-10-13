@@ -78,12 +78,8 @@ impl TileRegistry {
 pub const DEFAULT_PATH: &str = "assets/tiles.toml";
 
 pub fn load(path: &str) -> Result<TileRegistry, String> {
-    match std::fs::read_to_string(path) {
-        Ok(source) => TileRegistry::from_toml(&source).map_err(|e| format!("{path}: {e}")),
-        Err(err) => {
-            panic!("could not read {path}: {err}")
-        }
-    }
+    let source = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    TileRegistry::from_toml(&source).map_err(|e| format!("{path}: {e}"))
 }
 
 #[derive(Deserialize)]
