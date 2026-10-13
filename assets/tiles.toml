@@ -10,7 +10,7 @@
 #   color - optional "#rrggbb" render color. Omit it for invisible tiles
 #           such as air. Defaults to invisible.
 #   solid - whether the tile blocks entity movement. Defaults to false.
-#   light - how much block light the tile emits, 0-15. Defaults to 0.
+#   light - how much block light the tile emits, 0.0 (none) to 1.0 (full). Defaults to 0.
 #   opaque - whether the tile blocks all light (sky and torch light).
 #            Defaults to false.
 #   blocks_sky - whether the tile blocks natural light only; torch light
@@ -44,7 +44,6 @@ color = "#8a5a36"
 [[tile]]
 name = "leaves"
 color = "#2f7a3d"
-blocks_sky = true
 
 [[tile]]
 name = "dirt_wall"
@@ -71,4 +70,4 @@ opaque = true
 [[tile]]
 name = "torch"
 color = "#ffcf6e"
-light = 14
+light = 1.0

@@ -21,11 +21,17 @@ const TREE_CHANCE: f64 = 0.16;
 // Iron only spawns this far below the surface, in tiles.
 const IRON_DEPTH: i32 = 60;
 
-// How far light travels: the brightest level is 15, propagation costs one level per tile.
-const LIGHT_RADIUS: i32 = light::LIGHT_MAX as i32;
+// How far light can still matter in air: 0.91^32 < LIGHT_EPSILON (0.05), so light is dead within 32 tiles of its source.
+const LIGHT_RADIUS: i32 = 32;
 
-// A chunk plus one light radius on each side. Any source that could light the chunk's interior is inside this window.
+// A chunk plus one light radius on each side. Any source that could light the chunk's interior brighter than LIGHT_EPSILON is inside this window.
 const WINDOW_SIZE: i32 = CHUNK_SIZE + 2 * LIGHT_RADIUS;
+
+// The relight snapshot below copies whole chunks; that only works while the window is exactly a 3x3 grid of chunks.
+const _: () = assert!(
+    WINDOW_SIZE == 3 * CHUNK_SIZE,
+    "window must be a 3x3 chunk grid"
+);
 
 // Generation puts nothing above this height (terrain tops out near y = -76), so sky scans start here and only meet air.
 const SKY_CEILING: i32 = -128;
@@ -35,8 +41,8 @@ const SKY_SCAN_LIMIT: i32 = 1024;
 
 pub struct Chunk {
     tiles: Box<[Tile; CHUNK_AREA]>,
-    sky: Box<[u8; CHUNK_AREA]>,
-    block: Box<[u8; CHUNK_AREA]>,
+    sky: Box<[f32; CHUNK_AREA]>,
+    block: Box<[f32; CHUNK_AREA]>,
     // Set when tiles changed and the light arrays are stale.
     light_dirty: bool,
 }
@@ -45,10 +51,10 @@ impl Chunk {
     pub fn tiles(&self) -> &[Tile; CHUNK_AREA] {
         &self.tiles
     }
-    pub fn sky(&self) -> &[u8; CHUNK_AREA] {
+    pub fn sky(&self) -> &[f32; CHUNK_AREA] {
         &self.sky
     }
-    pub fn block(&self) -> &[u8; CHUNK_AREA] {
+    pub fn block(&self) -> &[f32; CHUNK_AREA] {
         &self.block
     }
 }
@@ -72,6 +78,12 @@ pub struct World {
 
 impl World {
     pub fn new(seed: u32, tiles: TileSet) -> Self {
+        // Invariant: the window margin must cover light's full reach, or chunk seams appear. Checked, not assumed.
+        debug_assert!(
+            light::AIR_DECAY.powi(LIGHT_RADIUS) < light::LIGHT_EPSILON,
+            "LIGHT_RADIUS no longer covers light's reach through air"
+        );
+
         let fbm = |salt: u32, octaves: usize| {
             let seed = seed.wrapping_add(salt.wrapping_mul(7919));
             let mut noise = Fbm::<Perlin>::new(seed);
@@ -159,9 +171,7 @@ impl World {
             None => false,
         };
 
-        // Light travels at most LIGHT_RADIUS (15) < CHUNK_SIZE (32), so the
-        // edited chunk and its 8 neighbors are the only chunks whose
-        // sideways light can change.
+        // Light travels at most LIGHT_RADIUS (32) <= CHUNK_SIZE (32).
         for dcx in -1..=1 {
             for dcy in -1..=1 {
                 if let Some(chunk) = self.chunks.get_mut(&(cx + dcx, cy + dcy)) {
@@ -170,10 +180,10 @@ impl World {
             }
         }
 
-        // A new shadow (or new sunlight down a shaft) reaches far below.
+        // All three columns must re-light below the edit.
         if floor_moved {
             for (&(kx, _), chunk) in self.chunks.iter_mut() {
-                if kx == cx {
+                if (kx - cx).abs() <= 1 {
                     chunk.light_dirty = true;
                 }
             }
@@ -206,8 +216,8 @@ impl World {
 
         Chunk {
             tiles: Box::new(tiles),
-            sky: Box::new([0u8; CHUNK_AREA]),
-            block: Box::new([0u8; CHUNK_AREA]),
+            sky: Box::new([0.0f32; CHUNK_AREA]),
+            block: Box::new([0.0f32; CHUNK_AREA]),
             light_dirty: true,
         }
     }
@@ -338,14 +348,19 @@ impl World {
         let x0 = cx * CHUNK_SIZE - LIGHT_RADIUS;
         let y0 = cy * CHUNK_SIZE - LIGHT_RADIUS;
 
-        // Snapshot the window into OWNED buffers: compute_light gets
-        // plain data, so no borrow of self is held across the BFS.
         let mut window = vec![Tile::Air; (WINDOW_SIZE * WINDOW_SIZE) as usize];
-        let mut i = 0;
-        for y in y0..y0 + WINDOW_SIZE {
-            for x in x0..x0 + WINDOW_SIZE {
-                window[i] = self.get_tile((x, y));
-                i += 1;
+        for gy in -1i32..=1 {
+            for gx in -1i32..=1 {
+                self.ensure_generated(cx + gx, cy + gy);
+                let chunk = self.chunks.get(&(cx + gx, cy + gy)).unwrap();
+                let wx = ((gx + 1) * CHUNK_SIZE) as usize;
+                let wy = ((gy + 1) * CHUNK_SIZE) as usize;
+                for row in 0..CHUNK_SIZE as usize {
+                    let src =
+                        &chunk.tiles()[row * CHUNK_SIZE as usize..(row + 1) * CHUNK_SIZE as usize];
+                    let dst = (wy + row) * WINDOW_SIZE as usize + wx;
+                    window[dst..dst + CHUNK_SIZE as usize].copy_from_slice(src);
+                }
             }
         }
 
@@ -374,7 +389,7 @@ impl World {
         chunk.light_dirty = false;
     }
 
-    pub fn get_light(&mut self, pos: TilePosition) -> (u8, u8) {
+    pub fn get_light(&mut self, pos: TilePosition) -> (f32, f32) {
         let (x, y) = pos;
         let (cx, cy) = (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE));
         let chunk = self.get_chunk(cx, cy);

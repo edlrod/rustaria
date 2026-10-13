@@ -6,7 +6,7 @@ include!(concat!(env!("OUT_DIR"), "/tiles.rs"));
 pub struct TileInfo {
     pub color: Option<[u8; 3]>,
     pub solid: bool,
-    pub light: u8,
+    pub light: f32,
     pub opaque: bool,
     pub blocks_sky: bool,
 }
@@ -100,7 +100,7 @@ struct TileDef {
     #[serde(default)]
     solid: bool,
     #[serde(default)]
-    light: u8,
+    light: f32,
     #[serde(default)]
     opaque: bool,
     #[serde(default)]
