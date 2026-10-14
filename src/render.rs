@@ -18,7 +18,7 @@ pub fn draw_terrain(terrain: &mut Terrain, camera: &Camera) {
         .collect();
 
     for (cx, cy) in camera.visible_chunks() {
-        let chunk = terrain.get_chunk(cx, cy);
+        let chunk = terrain.get_chunk((cx, cy));
         let sky = chunk.sky();
         let block = chunk.block();
 

@@ -69,37 +69,37 @@ impl Terrain {
         &self.tile_registry
     }
 
-    fn ensure_generated(&mut self, cx: i32, cy: i32) {
-        if !self.chunks.contains_key(&(cx, cy)) {
-            let chunk = self.generator.generate_chunk(cx, cy);
-            self.chunks.insert((cx, cy), chunk);
+    fn ensure_generated(&mut self, chunk_pos: ChunkPosition) {
+        if !self.chunks.contains_key(&chunk_pos) {
+            let chunk = self.generator.generate_chunk(chunk_pos);
+            self.chunks.insert(chunk_pos, chunk);
         }
     }
 
-    pub fn get_chunk(&mut self, cx: i32, cy: i32) -> &Chunk {
-        self.ensure_generated(cx, cy);
-        let dirty = self.chunks.get(&(cx, cy)).unwrap().light_dirty;
+    pub fn get_chunk(&mut self, chunk_pos: ChunkPosition) -> &Chunk {
+        self.ensure_generated(chunk_pos);
+        let dirty = self.chunks.get(&chunk_pos).unwrap().light_dirty;
         if dirty {
-            self.relight_chunk(cx, cy);
+            self.relight_chunk(chunk_pos);
         }
-        self.chunks.get(&(cx, cy)).unwrap()
+        self.chunks.get(&chunk_pos).unwrap()
     }
 
-    fn get_chunk_mut(&mut self, cx: i32, cy: i32) -> &mut Chunk {
-        self.ensure_generated(cx, cy);
-        self.chunks.get_mut(&(cx, cy)).unwrap()
+    fn get_chunk_mut(&mut self, chunk_pos: ChunkPosition) -> &mut Chunk {
+        self.ensure_generated(chunk_pos);
+        self.chunks.get_mut(&chunk_pos).unwrap()
     }
 
     pub fn get_tile(&mut self, pos: TilePosition) -> Tile {
-        let ((cx, cy), (lx, ly)) = chunk_and_local(pos);
-        self.ensure_generated(cx, cy);
-        let chunk = self.chunks.get(&(cx, cy)).unwrap();
+        let (chunk_pos, (lx, ly)) = chunk_and_local(pos);
+        self.ensure_generated(chunk_pos);
+        let chunk = self.chunks.get(&chunk_pos).unwrap();
         chunk.tiles()[(ly * CHUNK_SIZE + lx) as usize]
     }
 
     pub fn set_tile(&mut self, pos: TilePosition, tile: Tile) {
-        let ((cx, cy), (lx, ly)) = chunk_and_local(pos);
-        let chunk = self.get_chunk_mut(cx, cy);
+        let (chunk_pos, (lx, ly)) = chunk_and_local(pos);
+        let chunk = self.get_chunk_mut(chunk_pos);
         chunk.tiles[(ly * CHUNK_SIZE + lx) as usize] = tile;
 
         // Invalidate this column's sky entry; if the floor moved, light
@@ -107,6 +107,7 @@ impl Terrain {
         let floor_moved = self.invalidate_sky_column(pos.0);
 
         // Light travels at most LIGHT_RADIUS (32) <= CHUNK_SIZE (32).
+        let (cx, cy) = chunk_pos;
         for dcx in -1..=1 {
             for dcy in -1..=1 {
                 if let Some(chunk) = self.chunks.get_mut(&(cx + dcx, cy + dcy)) {
@@ -126,8 +127,8 @@ impl Terrain {
     }
 
     pub fn get_light(&mut self, pos: TilePosition) -> (f32, f32) {
-        let ((cx, cy), (lx, ly)) = chunk_and_local(pos);
-        let chunk = self.get_chunk(cx, cy);
+        let (chunk_pos, (lx, ly)) = chunk_and_local(pos);
+        let chunk = self.get_chunk(chunk_pos);
         let i = (ly * CHUNK_SIZE + lx) as usize;
         (chunk.sky()[i], chunk.block()[i])
     }

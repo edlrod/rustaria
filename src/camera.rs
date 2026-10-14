@@ -69,7 +69,7 @@ impl Camera {
         )
     }
 
-    pub fn screen_to_world(&self, mouse_x: f32, mouse_y: f32) -> (f32, f32) {
+    pub fn screen_to_world(&self, mouse_x: f32, mouse_y: f32) -> Position {
         let center_mouse_x = mouse_x - screen_width() / 2.0;
         let center_mouse_y = mouse_y - screen_height() / 2.0;
 

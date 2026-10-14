@@ -1,5 +1,6 @@
 use super::{Terrain, CHUNK_SIZE};
 use crate::light;
+use crate::position::ChunkPosition;
 use crate::tile::Tile;
 use std::collections::HashMap;
 
@@ -74,8 +75,9 @@ impl Terrain {
         floor
     }
 
-    /// Recompute the light arrays of chunk `(cx, cy)` from a 3x3-chunk window.
-    pub(super) fn relight_chunk(&mut self, cx: i32, cy: i32) {
+    /// Recompute the light arrays of chunk `chunk_pos` from a 3x3-chunk window.
+    pub(super) fn relight_chunk(&mut self, chunk_pos: ChunkPosition) {
+        let (cx, cy) = chunk_pos;
         let x0 = cx * CHUNK_SIZE - LIGHT_RADIUS;
         let y0 = cy * CHUNK_SIZE - LIGHT_RADIUS;
 
@@ -83,7 +85,7 @@ impl Terrain {
         let mut window = vec![Tile::Air; (WINDOW_SIZE * WINDOW_SIZE) as usize];
         for gy in -1i32..=1 {
             for gx in -1i32..=1 {
-                self.ensure_generated(cx + gx, cy + gy);
+                self.ensure_generated((cx + gx, cy + gy));
                 let chunk = self.chunks.get(&(cx + gx, cy + gy)).unwrap();
                 let wx = ((gx + 1) * CHUNK_SIZE) as usize;
                 let wy = ((gy + 1) * CHUNK_SIZE) as usize;

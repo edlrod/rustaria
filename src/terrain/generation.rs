@@ -1,4 +1,5 @@
 use super::{CHUNK_AREA, CHUNK_SIZE, Chunk};
+use crate::position::ChunkPosition;
 use crate::tile::Tile;
 use noise::{Fbm, NoiseFn, Perlin};
 
@@ -56,7 +57,8 @@ impl TerrainGen {
         (hills + bumps).round() as i32
     }
 
-    pub(super) fn generate_chunk(&self, cx: i32, cy: i32) -> Chunk {
+    pub(super) fn generate_chunk(&self, chunk_pos: ChunkPosition) -> Chunk {
+        let (cx, cy) = chunk_pos;
         let x0 = cx * CHUNK_SIZE;
         let y0 = cy * CHUNK_SIZE;
 
